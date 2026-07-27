@@ -22,6 +22,7 @@ pub struct Filter {
     regexes: Vec<Regex>,
 }
 
+#[allow(dead_code)]
 impl Filter {
     pub fn new() -> Self {
         let regexes = PATTERNS
