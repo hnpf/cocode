@@ -44,7 +44,7 @@ pub fn pick_agent(last_used: Option<usize>) -> io::Result<Option<String>> {
                 }
                 (KeyCode::Enter, _) => break Ok(Some(selected)),
                 (KeyCode::Char('q'), _) | (KeyCode::Esc, _) => break Ok(None),
-                _ => {}
+                _ => continue, // ignore unhandled keys — no redraw
             }
             draw(&agents, selected, start_row, &mut stdout)?;
         }
