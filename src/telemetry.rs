@@ -1,6 +1,7 @@
 use regex::Regex;
 
 // patterns that match known telemetry / analytics lines emitted by agents
+#[allow(dead_code)]
 const PATTERNS: &[&str] = &[
     r"(?i)telemetry",
     r"(?i)sentry\.io",
@@ -16,6 +17,7 @@ const PATTERNS: &[&str] = &[
     r"(?i)usage[_\s]stats",
 ];
 
+#[allow(dead_code)]
 pub struct Filter {
     regexes: Vec<Regex>,
 }

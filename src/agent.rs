@@ -1,10 +1,14 @@
-use crate::{config, telemetry::Filter};
+use crate::config;
 use std::{
     env,
-    io::{self, BufRead, BufReader, Write},
+    io,
     process::{Child, Command, Stdio},
-    thread,
 };
+
+// imports used by the commented-out telemetry-filtered path:
+// use crate::telemetry::Filter;
+// use std::io::{BufRead, BufReader, Write};
+// use std::thread;
 
 pub fn binary(name: &str) -> &str {
     match name {
