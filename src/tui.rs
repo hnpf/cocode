@@ -76,9 +76,15 @@ fn draw(
 
     queue!(
         stdout,
+        Print("  "),
         SetAttribute(Attribute::Bold),
-        SetForegroundColor(Color::Cyan),
-        Print(pad("  cocode — pick an agent", cols)),
+    )?;
+    print_wordmark(stdout)?;
+    queue!(
+        stdout,
+        SetForegroundColor(Color::DarkGrey),
+        Print(" — pick an agent"),
+        Print(pad("", cols.saturating_sub(25))),
         Print("\r\n"),
         Print(pad("", cols)),
         Print("\r\n"),
@@ -124,6 +130,25 @@ fn draw(
     )?;
 
     stdout.flush()
+}
+
+/// Print the cocode wordmark with a blue-to-pink truecolor gradient.
+fn print_wordmark(stdout: &mut io::Stdout) -> io::Result<()> {
+    const WORDMARK: &str = "cocode";
+    const COLORS: [Color; 6] = [
+        Color::Rgb { r: 83, g: 169, b: 255 },
+        Color::Rgb { r: 112, g: 151, b: 255 },
+        Color::Rgb { r: 146, g: 130, b: 247 },
+        Color::Rgb { r: 183, g: 112, b: 231 },
+        Color::Rgb { r: 220, g: 97, b: 207 },
+        Color::Rgb { r: 255, g: 91, b: 181 },
+    ];
+
+    for (letter, color) in WORDMARK.chars().zip(COLORS) {
+        queue!(stdout, SetForegroundColor(color), Print(letter))?;
+    }
+
+    Ok(())
 }
 
 fn erase(start_row: u16, height: u16, stdout: &mut io::Stdout) -> io::Result<()> {
