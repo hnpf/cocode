@@ -7,6 +7,23 @@ set -e
 REPO="https://github.com/YOUR_USER/cocode"
 BIN="cocode"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
+INSTALL_SHORTCUTS=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --shortcuts) INSTALL_SHORTCUTS=true ;;
+        --help|-h)
+            echo "usage: bash install.sh [--shortcuts]"
+            echo ""
+            echo "  --shortcuts  also install the coco shortcuts"
+            exit 0
+            ;;
+        *)
+            echo "unknown option: $arg" >&2
+            exit 1
+            ;;
+    esac
+done
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -56,6 +73,18 @@ cp target/release/$BIN "$INSTALL_DIR/$BIN"
 chmod +x "$INSTALL_DIR/$BIN"
 
 ok "installed → $INSTALL_DIR/$BIN"
+
+if [[ "$INSTALL_SHORTCUTS" == true ]]; then
+    for shortcut in coco; do
+        shortcut_path="$INSTALL_DIR/$shortcut"
+        if [[ -e "$shortcut_path" || -L "$shortcut_path" ]]; then
+            info "skipped '$shortcut' shortcut — $shortcut_path already exists"
+        else
+            ln -s "$BIN" "$shortcut_path"
+            ok "shortcut installed → $shortcut"
+        fi
+    done
+fi
 
 # ── PATH hint ────────────────────────────────────────────────────────────────
 

@@ -1,10 +1,10 @@
 # cocode
 
-A universal multiplexer, manager, and wrapper for terminal-based coding agents — `claude`, `agy`, `codex`, `kimi`.
+a universal multiplexer, manager, and wrapper for terminal-based coding agents; `claude`, `agy`, `codex`, `kimi`.
 
 ```
-cocode                           # interactive TUI picker
-cocode claude                    # launch claude directly
+cocode                           # sexy TUI picker
+cocode claude                    # launch claude directly (and other agents)
 cocode agy --model gemini-pro    # launch with extra args
 ```
 
@@ -12,15 +12,15 @@ cocode agy --model gemini-pro    # launch with extra args
 
 ## install
 
-### one-liner (curl)
+### one-liner installation (via curl)
 
 > requires `git` and a Rust toolchain ([rustup.rs](https://rustup.rs))
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/YOUR_USER/cocode/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/hnpf/cocode/main/install.sh | bash
 ```
 
-This clones the repo to a temp directory, builds a release binary, and installs it to `~/.local/bin`.
+this clones the repo to a temp directory, builds a release binary, and installs it to `~/.local/bin`.
 
 If `~/.local/bin` isn't in your `PATH`, add this to your `~/.bashrc` or `~/.zshrc`:
 
@@ -28,7 +28,7 @@ If `~/.local/bin` isn't in your `PATH`, add this to your `~/.bashrc` or `~/.zshr
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Then reload your shell:
+then reload your shell:
 
 ```sh
 source ~/.bashrc   # or ~/.zshrc
@@ -37,10 +37,26 @@ source ~/.bashrc   # or ~/.zshrc
 ### from source (local)
 
 ```sh
-git clone https://github.com/YOUR_USER/cocode
+git clone https://github.com/hnpf/cocode
 cd cocode
 bash install.sh
 ```
+
+### shortcuts
+
+want the wait even shorter? add `coco` symlink during installation! this is how to do so:
+
+```sh
+bash install.sh --shortcuts
+```
+
+for the curl install, pass the option through to Bash:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/hnpf/cocode/main/install.sh | bash -s -- --shortcuts
+```
+
+the shortcut behaves exactly like `cocode` (for example, `coco claude`)!
 
 ### via cargo
 
@@ -59,13 +75,13 @@ cargo install --path .
 | codex  | codex  | OpenAI            |
 | kimi   | kimi   | Moonshot AI       |
 
-The agent binaries must already be installed and on your `$PATH`. cocode just manages and wraps them.
+the agent binaries must already be installed and on your `$PATH`. cocode just manages and wraps them.
 
 ---
 
 ## config
 
-Keys and model preferences are stored at `~/.config/cocode/config.json`.
+APIkeys and model prefs are stored in `~/.config/cocode/config.json`.
 
 ```sh
 cocode config set-key   claude  sk-ant-...
@@ -79,13 +95,13 @@ cocode config set-model agy     gemini-2.5-pro
 cocode config show
 ```
 
-Keys are injected as env vars (`ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, etc.) only when not already set — your shell env always wins.
+APIkeys are injected as env vars (`ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, etc.) only when not already set, your shell env wins.
 
 ---
 
 ## context migration
 
-When an agent hits a rate limit or fails mid-session:
+when an agent hits a rate limit or fails mid-session:
 
 ```sh
 # 1. paste your context (ctrl+d to finish)
@@ -102,17 +118,17 @@ cocode ctx dump claude-1    # print a saved session
 cocode ctx list             # list all sessions
 ```
 
-Sessions are plain text files under `~/.local/share/cocode/`.
+sessions are plain text files under `~/.local/share/cocode/`.
 
 ---
 
 ## telemetry filtering
 
-Stdout and stderr from child agents are piped through a filter that silently drops lines matching known telemetry/analytics patterns (sentry, posthog, amplitude, mixpanel, datadog, etc.) before they reach your terminal.
+stdout and stderr from child agents are piped through a filter that silently drops lines matching known telemetry/analytics patterns (sentry, posthog, amplitude, mixpanel, datadog, etc.) before they reach your terminal.
 
 ---
 
-## project structure
+## project codebase structure (really simple to navigate!)
 
 ```
 src/
