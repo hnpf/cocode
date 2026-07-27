@@ -4,22 +4,36 @@ mod migrate;
 mod telemetry;
 mod tui;
 
-use std::{env, process};
+use std::{env, fs, path::PathBuf, process};
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     let refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
 
     match refs.as_slice() {
-        // bare invocation — show TUI picker
-        [] => match tui::pick_agent() {
-            Ok(Some(name)) => launch(&name, &[]),
-            Ok(None) => {}
-            Err(e) => die(&format!("tui error: {e}")),
-        },
+        [] => {
+            let last = load_last_agent();
+            let last_idx = last.as_deref().and_then(|name| {
+                agent::known_agents()
+                    .iter()
+                    .position(|(n, _)| *n == name)
+            });
+            match tui::pick_agent(last_idx) {
+                Ok(Some(name)) => {
+                    save_last_agent(&name);
+                    launch(&name, &[]);
+                }
+                Ok(None) => {}
+                Err(e) => die(&format!("tui error: {e}")),
+            }
+        }
 
-        // known agent
+        ["--version" | "-V"] => println!("cocode {VERSION}"),
+
         [name, rest @ ..] if agent::known_agents().iter().any(|(n, _)| n == name) => {
+            save_last_agent(name);
             let extra: Vec<String> = rest.iter().map(|s| s.to_string()).collect();
             launch(name, &extra);
         }
@@ -36,7 +50,6 @@ fn main() {
 
         ["help" | "--help" | "-h", ..] => print_help(),
 
-        // passthrough unknown binary
         [name, rest @ ..] => {
             let extra: Vec<String> = rest.iter().map(|s| s.to_string()).collect();
             launch(name, &extra);
@@ -89,7 +102,7 @@ fn handle_ctx(args: &[String]) {
 }
 
 fn print_help() {
-    println!("cocode — multiplexer for terminal coding agents\n");
+    println!("cocode {VERSION} — multiplexer for terminal coding agents\n");
     println!("usage:");
     println!("  cocode                           pick agent interactively");
     println!("  cocode <agent> [args...]         launch agent directly");
@@ -100,10 +113,34 @@ fn print_help() {
     println!("  cocode ctx dump    <session>     print saved context");
     println!("  cocode ctx migrate <src> <dst>   copy context between agents");
     println!("  cocode ctx list                  list saved sessions");
+    println!("  cocode --version");
     println!("\nagents: claude  agy  codex  kimi");
 }
 
 fn die(msg: &str) -> ! {
     eprintln!("cocode: {msg}");
     process::exit(1);
+}
+
+// last-used agent stored as a single word in ~/.local/share/cocode/last
+fn last_agent_path() -> PathBuf {
+    dirs::data_local_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("cocode")
+        .join("last")
+}
+
+fn load_last_agent() -> Option<String> {
+    fs::read_to_string(last_agent_path())
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+fn save_last_agent(name: &str) {
+    let path = last_agent_path();
+    if let Some(p) = path.parent() {
+        let _ = fs::create_dir_all(p);
+    }
+    let _ = fs::write(path, name);
 }
