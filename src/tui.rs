@@ -71,6 +71,8 @@ fn draw(
     stdout: &mut io::Stdout,
 ) -> io::Result<()> {
     let (cols, _) = terminal::size()?;
+    let title_suffix = " — pick an agent";
+    let title_width = 2 + "cocode".chars().count() + title_suffix.chars().count();
 
     queue!(stdout, cursor::MoveTo(0, start_row))?;
 
@@ -83,8 +85,8 @@ fn draw(
     queue!(
         stdout,
         SetForegroundColor(Color::DarkGrey),
-        Print(" — pick an agent"),
-        Print(pad("", cols.saturating_sub(25))),
+        Print(title_suffix),
+        Print(" ".repeat((cols as usize).saturating_sub(title_width))),
         Print("\r\n"),
         Print(pad("", cols)),
         Print("\r\n"),
