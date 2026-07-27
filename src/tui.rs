@@ -61,7 +61,7 @@ pub fn pick_agent(last_used: Option<usize>) -> io::Result<Option<String>> {
 }
 
 fn menu_height(n: usize) -> u16 {
-    (n + 9) as u16
+    (n + 13) as u16
 }
 
 fn draw(
@@ -74,7 +74,14 @@ fn draw(
 
     queue!(stdout, cursor::MoveTo(0, start_row))?;
 
-    queue!(stdout, SetAttribute(Attribute::Bold))?;
+    queue!(
+        stdout,
+        Print(pad("", cols)),
+        Print("\r\n"),
+        Print(pad("", cols)),
+        Print("\r\n"),
+        SetAttribute(Attribute::Bold),
+    )?;
     print_wordmark(stdout, cols)?;
     queue!(
         stdout,
@@ -120,6 +127,10 @@ fn draw(
         Print("\r\n"),
         SetForegroundColor(Color::DarkGrey),
         Print(pad("  ↑/↓  j/k  enter  q/ctrl+c", cols)),
+        Print("\r\n"),
+        Print(pad("", cols)),
+        Print("\r\n"),
+        Print(pad("", cols)),
         Print("\r\n"),
         SetAttribute(Attribute::Reset),
     )?;
