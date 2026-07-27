@@ -29,13 +29,39 @@ pub fn known_agents() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
+// how to install each agent if the binary isn't on PATH
+fn install_hint(name: &str) -> Option<&'static str> {
+    match name {
+        "claude" => Some("npm install -g @anthropic-ai/claude-code"),
+        "agy" => Some("npm install -g @google/agy  OR  pip install antigravity-cli"),
+        "codex" => Some("npm install -g @openai/codex"),
+        "kimi" => Some("pip install kimi-cli"),
+        _ => None,
+    }
+}
+
 pub fn spawn(name: &str, extra: &[String]) -> io::Result<Child> {
     let cfg = config::load();
     let ac = cfg.agents.get(name);
 
+    // warn if no api key is configured and the env var isn't set either
+    let key_var = match name {
+        "claude" => Some("ANTHROPIC_API_KEY"),
+        "agy" | "antigravity" => Some("GOOGLE_API_KEY"),
+        "codex" => Some("OPENAI_API_KEY"),
+        "kimi" => Some("MOONSHOT_API_KEY"),
+        _ => None,
+    };
+    if let Some(var) = key_var {
+        let has_env = env::var(var).is_ok();
+        let has_cfg = ac.as_ref().and_then(|a| a.api_key.as_ref()).is_some();
+        if !has_env && !has_cfg {
+            eprintln!("cocode: warning: no api key for '{name}' (set with: cocode config set-key {name} <key>)");
+        }
+    }
+
     let bin = binary(name);
     let mut cmd = Command::new(bin);
-
     cmd.args(extra);
 
     if let Some(ac) = ac {
@@ -50,9 +76,7 @@ pub fn spawn(name: &str, extra: &[String]) -> io::Result<Child> {
         }
     }
 
-    // inherit all streams so isatty() passes in the child process.
-    // agents like codex and agy check for a real tty and refuse to run
-    // or send garbage escape sequences if stdout/stderr are pipes.
+    // inherit all streams so isatty() passes in the child process
     //
     // telemetry filtering via piped streams is left below for future use
     // with a pty (e.g. portable-pty crate), which would satisfy isatty()
@@ -65,12 +89,18 @@ pub fn spawn(name: &str, extra: &[String]) -> io::Result<Child> {
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
 
-    cmd.spawn()
+    cmd.spawn().map_err(|e| {
+        if e.kind() == io::ErrorKind::NotFound {
+            if let Some(hint) = install_hint(name) {
+                eprintln!("cocode: '{bin}' not found. install it with:");
+                eprintln!("  {hint}");
+            }
+        }
+        e
+    })
 }
 
 pub fn run(mut child: Child) -> io::Result<i32> {
-    // with inherited streams the child drives the terminal directly;
-    // just wait for it to exit
     let status = child.wait()?;
     Ok(status.code().unwrap_or(1))
 }
@@ -85,9 +115,7 @@ pub fn run(mut child: Child) -> io::Result<i32> {
 //         let reader = BufReader::new(stdout);
 //         let mut out = io::stdout();
 //         for line in reader.lines().flatten() {
-//             if f1.check(&line).is_some() {
-//                 let _ = writeln!(out, "{line}");
-//             }
+//             if f1.check(&line).is_some() { let _ = writeln!(out, "{line}"); }
 //         }
 //     });
 //     let f2 = Filter::new();
@@ -95,9 +123,7 @@ pub fn run(mut child: Child) -> io::Result<i32> {
 //         let reader = BufReader::new(stderr);
 //         let mut err = io::stderr();
 //         for line in reader.lines().flatten() {
-//             if f2.check(&line).is_some() {
-//                 let _ = writeln!(err, "{line}");
-//             }
+//             if f2.check(&line).is_some() { let _ = writeln!(err, "{line}"); }
 //         }
 //     });
 //     let status = child.wait()?;
