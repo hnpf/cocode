@@ -6,7 +6,6 @@ use std::{
     thread,
 };
 
-// maps agent name to its binary
 pub fn binary(name: &str) -> &str {
     match name {
         "claude" => "claude",
@@ -26,7 +25,6 @@ pub fn known_agents() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
-// inject api key and model as env vars the agent expects, then exec
 pub fn spawn(name: &str, extra: &[String]) -> io::Result<Child> {
     let cfg = config::load();
     let ac = cfg.agents.get(name);
@@ -34,15 +32,12 @@ pub fn spawn(name: &str, extra: &[String]) -> io::Result<Child> {
     let bin = binary(name);
     let mut cmd = Command::new(bin);
 
-    // pass through the user's own args after the agent name
     cmd.args(extra);
 
-    // append stored extra_args from config
     if let Some(ac) = ac {
         if let Some(ref args) = ac.extra_args {
             cmd.args(args);
         }
-        // each agent has its own env var convention; cover common ones
         if let Some(ref key) = ac.api_key {
             set_key_env(&mut cmd, name, key);
         }
@@ -51,50 +46,61 @@ pub fn spawn(name: &str, extra: &[String]) -> io::Result<Child> {
         }
     }
 
+    // inherit all streams so isatty() passes in the child process.
+    // agents like codex and agy check for a real tty and refuse to run
+    // or send garbage escape sequences if stdout/stderr are pipes.
+    //
+    // telemetry filtering via piped streams is left below for future use
+    // with a pty (e.g. portable-pty crate), which would satisfy isatty()
+    // while still allowing interception:
+    //
+    // cmd.stdin(Stdio::inherit())
+    //    .stdout(Stdio::piped())
+    //    .stderr(Stdio::piped());
     cmd.stdin(Stdio::inherit())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
 
     cmd.spawn()
 }
 
-// run the child, pipe stdout/stderr through the telemetry filter, wait for exit
 pub fn run(mut child: Child) -> io::Result<i32> {
-    let filter = Filter::new();
-
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
-
-    // stdout thread
-    let f1 = Filter::new();
-    let t1 = thread::spawn(move || {
-        let reader = BufReader::new(stdout);
-        let mut out = io::stdout();
-        for line in reader.lines().flatten() {
-            if f1.check(&line).is_some() {
-                let _ = writeln!(out, "{line}");
-            }
-        }
-    });
-
-    // stderr thread
-    let f2 = filter;
-    let t2 = thread::spawn(move || {
-        let reader = BufReader::new(stderr);
-        let mut err = io::stderr();
-        for line in reader.lines().flatten() {
-            if f2.check(&line).is_some() {
-                let _ = writeln!(err, "{line}");
-            }
-        }
-    });
-
+    // with inherited streams the child drives the terminal directly;
+    // just wait for it to exit
     let status = child.wait()?;
-    let _ = t1.join();
-    let _ = t2.join();
-
     Ok(status.code().unwrap_or(1))
 }
+
+// --- telemetry-filtered run (needs pty to satisfy isatty) ---
+//
+// pub fn run_filtered(mut child: Child) -> io::Result<i32> {
+//     let stdout = child.stdout.take().unwrap();
+//     let stderr = child.stderr.take().unwrap();
+//     let f1 = Filter::new();
+//     let t1 = thread::spawn(move || {
+//         let reader = BufReader::new(stdout);
+//         let mut out = io::stdout();
+//         for line in reader.lines().flatten() {
+//             if f1.check(&line).is_some() {
+//                 let _ = writeln!(out, "{line}");
+//             }
+//         }
+//     });
+//     let f2 = Filter::new();
+//     let t2 = thread::spawn(move || {
+//         let reader = BufReader::new(stderr);
+//         let mut err = io::stderr();
+//         for line in reader.lines().flatten() {
+//             if f2.check(&line).is_some() {
+//                 let _ = writeln!(err, "{line}");
+//             }
+//         }
+//     });
+//     let status = child.wait()?;
+//     let _ = t1.join();
+//     let _ = t2.join();
+//     Ok(status.code().unwrap_or(1))
+// }
 
 fn set_key_env(cmd: &mut Command, agent: &str, key: &str) {
     let var = match agent {
@@ -104,7 +110,6 @@ fn set_key_env(cmd: &mut Command, agent: &str, key: &str) {
         "kimi" => "MOONSHOT_API_KEY",
         _ => return,
     };
-    // don't overwrite if the user already has it set
     if env::var(var).is_err() {
         cmd.env(var, key);
     }
