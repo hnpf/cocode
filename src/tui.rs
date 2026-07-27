@@ -61,7 +61,7 @@ pub fn pick_agent(last_used: Option<usize>) -> io::Result<Option<String>> {
 }
 
 fn menu_height(n: usize) -> u16 {
-    (n + 4) as u16
+    (n + 9) as u16
 }
 
 fn draw(
@@ -71,22 +71,15 @@ fn draw(
     stdout: &mut io::Stdout,
 ) -> io::Result<()> {
     let (cols, _) = terminal::size()?;
-    let title_suffix = " — pick an agent";
-    let title_width = 2 + "cocode".chars().count() + title_suffix.chars().count();
 
     queue!(stdout, cursor::MoveTo(0, start_row))?;
 
-    queue!(
-        stdout,
-        Print("  "),
-        SetAttribute(Attribute::Bold),
-    )?;
-    print_wordmark(stdout)?;
+    queue!(stdout, SetAttribute(Attribute::Bold))?;
+    print_wordmark(stdout, cols)?;
     queue!(
         stdout,
         SetForegroundColor(Color::DarkGrey),
-        Print(title_suffix),
-        Print(" ".repeat((cols as usize).saturating_sub(title_width))),
+        Print(pad("  pick an agent", cols)),
         Print("\r\n"),
         Print(pad("", cols)),
         Print("\r\n"),
@@ -134,23 +127,46 @@ fn draw(
     stdout.flush()
 }
 
-/// Print the cocode wordmark with a blue-to-pink truecolor gradient.
-fn print_wordmark(stdout: &mut io::Stdout) -> io::Result<()> {
-    const WORDMARK: &str = "cocode";
-    const COLORS: [Color; 6] = [
-        Color::Rgb { r: 83, g: 169, b: 255 },
-        Color::Rgb { r: 112, g: 151, b: 255 },
-        Color::Rgb { r: 146, g: 130, b: 247 },
-        Color::Rgb { r: 183, g: 112, b: 231 },
-        Color::Rgb { r: 220, g: 97, b: 207 },
-        Color::Rgb { r: 255, g: 91, b: 181 },
+/// Print the cocode wordmark as a blue-to-pink truecolor ASCII banner.
+fn print_wordmark(stdout: &mut io::Stdout, cols: u16) -> io::Result<()> {
+    const WORDMARK: [&str; 5] = [
+        " ██████  ██████   ██████  ██████  ██████  ███████",
+        "██      ██    ██ ██      ██    ██ ██    ██ ██     ",
+        "██      ██    ██ ██      ██    ██ ██    ██ █████  ",
+        "██      ██    ██ ██      ██    ██ ██    ██ ██     ",
+        " ██████  ██████   ██████  ██████  ██████  ███████",
     ];
+    let width = cols.saturating_sub(2) as usize;
 
-    for (letter, color) in WORDMARK.chars().zip(COLORS) {
-        queue!(stdout, SetForegroundColor(color), Print(letter))?;
+    for line in WORDMARK {
+        queue!(stdout, Print("  "))?;
+        for (column, character) in line.chars().take(width).enumerate() {
+            if character == ' ' {
+                queue!(stdout, Print(character))?;
+            } else {
+                queue!(
+                    stdout,
+                    SetForegroundColor(gradient_color(column, line.chars().count())),
+                    Print(character)
+                )?;
+            }
+        }
+        queue!(stdout, Print(" ".repeat(width.saturating_sub(line.chars().count()))), Print("\r\n"))?;
     }
 
     Ok(())
+}
+
+fn gradient_color(position: usize, width: usize) -> Color {
+    let t = position as f32 / width.saturating_sub(1).max(1) as f32;
+    let start = (83.0, 169.0, 255.0);
+    let end = (255.0, 91.0, 181.0);
+
+    Color::Rgb {
+        r: (start.0 + (end.0 - start.0) * t) as u8,
+        g: (start.1 + (end.1 - start.1) * t) as u8,
+        b: (start.2 + (end.2 - start.2) * t) as u8,
+    }
 }
 
 fn erase(start_row: u16, height: u16, stdout: &mut io::Stdout) -> io::Result<()> {
