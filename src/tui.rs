@@ -140,12 +140,14 @@ fn draw(
 
 /// Print the cocode wordmark as a blue-to-pink truecolor ASCII banner.
 fn print_wordmark(stdout: &mut io::Stdout, cols: u16) -> io::Result<()> {
-    const WORDMARK: [&str; 5] = [
+    const WORDMARK: [&str; 7] = [
         " ██████  ██████   ██████  ██████  ██████  ███████",
         "██      ██    ██ ██      ██    ██ ██    ██ ██     ",
         "██      ██    ██ ██      ██    ██ ██    ██ █████  ",
         "██      ██    ██ ██      ██    ██ ██    ██ ██     ",
         " ██████  ██████   ██████  ██████  ██████  ███████",
+        " ",
+        " ",
     ];
     let width = cols.saturating_sub(2) as usize;
 
